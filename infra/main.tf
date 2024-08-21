@@ -1,7 +1,12 @@
 locals {
-  tags            = { ProjectName = "Information Assistant", BuildNumber = var.buildNumber }
+  tags            = {
+      ProjectName = "Information Assistant",
+      BuildNumber = var.buildNumber
+      Environment = "Development"
+      Owner = "tbeauchemin@microsoft.com"
+  }
   azure_roles     = jsondecode(file("${path.module}/azure_roles.json"))
-  selected_roles  = ["CognitiveServicesOpenAIUser", "StorageBlobDataReader", "StorageBlobDataContributor", "SearchIndexDataReader", "SearchIndexDataContributor"]
+  selected_roles  = [ "CognitiveServicesOpenAIUser", "StorageBlobDataReader", "StorageBlobDataContributor", "SearchIndexDataReader", "SearchIndexDataContributor" ]
 }
 
 data "azurerm_client_config" "current" {}
@@ -55,7 +60,7 @@ module "storage" {
   allowBlobPublicAccess = false
   publicNetworkAccess   = true
   resourceGroupName     = azurerm_resource_group.rg.name
-  keyVaultId            = module.kvModule.keyVaultId 
+  keyVaultId            = module.kvModule.keyVaultId
   deleteRetentionPolicy = {
     days = 7
   }
@@ -70,7 +75,7 @@ module "enrichmentApp" {
   source                                    = "./core/host/enrichmentapp"
   name                                      = var.enrichmentServiceName != "" ? var.enrichmentServiceName : "infoasst-enrichmentweb-${random_string.random.result}"
   plan_name                                 = var.enrichmentAppServicePlanName != "" ? var.enrichmentAppServicePlanName : "infoasst-enrichmentasp-${random_string.random.result}"
-  location                                  = var.location 
+  location                                  = var.location
   tags                                      = local.tags
   sku = {
     size                                    = var.enrichmentAppServiceSkuSize
@@ -130,7 +135,7 @@ module "backend" {
   resourceGroupName                   = azurerm_resource_group.rg.name
   location                            = var.location
   tags                                = merge(local.tags, { "azd-service-name" = "backend" })
-  runtimeVersion                      = "3.10" 
+  runtimeVersion                      = "3.10"
   scmDoBuildDuringDeployment          = true
   managedIdentity                     = true
   appCommandLine                      = "gunicorn --workers 2 --worker-class uvicorn.workers.UvicornWorker app:app --timeout 600"
@@ -237,7 +242,7 @@ module "formrecognizer" {
   tags     = local.tags
   customSubDomainName = "infoasst-fr-${random_string.random.result}"
   resourceGroupName = azurerm_resource_group.rg.name
-  keyVaultId = module.kvModule.keyVaultId 
+  keyVaultId = module.kvModule.keyVaultId
   depends_on = [
     module.kvModule
   ]
@@ -247,9 +252,9 @@ module "cognitiveServices" {
   source = "./core/ai/cogServices"
 
   name     = "infoasst-enrichment-cog-${random_string.random.result}"
-  location = var.location 
+  location = var.location
   tags     = local.tags
-  keyVaultId = module.kvModule.keyVaultId 
+  keyVaultId = module.kvModule.keyVaultId
   resourceGroupName = azurerm_resource_group.rg.name
   depends_on = [
     module.kvModule
@@ -283,23 +288,23 @@ module "cosmosdb" {
   logDatabaseName   = "statusdb"
   logContainerName  = "statuscontainer"
   resourceGroupName = azurerm_resource_group.rg.name
-  keyVaultId        = module.kvModule.keyVaultId  
-  
+  keyVaultId        = module.kvModule.keyVaultId
+
   depends_on = [
     module.kvModule
   ]
 }
 
 
-# // Function App 
-module "functions" { 
+# // Function App
+module "functions" {
   source = "./core/host/functions"
 
   name                                  = var.functionsAppName != "" ? var.functionsAppName : "infoasst-func-${random_string.random.result}"
   location                              = var.location
   tags                                  = local.tags
   keyVaultUri                           = module.kvModule.keyVaultUri
-  keyVaultName                          = module.kvModule.keyVaultName 
+  keyVaultName                          = module.kvModule.keyVaultName
   plan_name                             = var.appServicePlanName != "" ? var.appServicePlanName : "infoasst-func-asp-${random_string.random.result}"
   sku                                   = {
     size                                = var.functionsAppSkuSize
@@ -314,8 +319,8 @@ module "functions" {
   blobStorageAccountName                = module.storage.name
   blobStorageAccountEndpoint            = module.storage.primary_endpoints
   blobStorageAccountOutputContainerName = var.contentContainerName
-  blobStorageAccountUploadContainerName = var.uploadContainerName 
-  blobStorageAccountLogContainerName    = var.functionLogsContainerName 
+  blobStorageAccountUploadContainerName = var.uploadContainerName
+  blobStorageAccountLogContainerName    = var.functionLogsContainerName
   formRecognizerEndpoint                = module.formrecognizer.formRecognizerAccountEndpoint
   CosmosDBEndpointURL                   = module.cosmosdb.CosmosDBEndpointURL
   CosmosDBLogDatabaseName               = module.cosmosdb.CosmosDBLogDatabaseName
@@ -394,7 +399,7 @@ module "userRoles" {
   for_each = { for role in local.selected_roles : role => { role_definition_id = local.azure_roles[role] } }
 
   scope            = azurerm_resource_group.rg.id
-  principalId      = data.azurerm_client_config.current.object_id 
+  principalId      = data.azurerm_client_config.current.object_id
   roleDefinitionId = each.value.role_definition_id
   principalType    = var.isInAutomation ? "ServicePrincipal" : "User"
   subscriptionId   = data.azurerm_client_config.current.subscription_id
@@ -459,7 +464,7 @@ module "aviRoleBackend" {
   roleDefinitionId  = local.azure_roles.Contributor
   principalType     = "ServicePrincipal"
   subscriptionId    = data.azurerm_client_config.current.subscription_id
-  resourceGroupId   = azurerm_resource_group.rg.id 
+  resourceGroupId   = azurerm_resource_group.rg.id
 }
 
 # // MANAGEMENT SERVICE PRINCIPAL ROLES
@@ -481,18 +486,18 @@ module "azMonitor" {
   logAnalyticsName  = module.logging.logAnalyticsName
   location          = var.location
   logWorkbookName   = "infoasst-lw-${random_string.random.result}"
-  resourceGroupName = azurerm_resource_group.rg.name 
+  resourceGroupName = azurerm_resource_group.rg.name
   componentResource = "/subscriptions/${var.subscriptionId}/resourceGroups/${azurerm_resource_group.rg.name}/providers/Microsoft.OperationalInsights/workspaces/${module.logging.logAnalyticsName}"
 }
 
 module "kvModule" {
-  source            = "./core/security/keyvault" 
+  source            = "./core/security/keyvault"
   name              = "infoasst-kv-${random_string.random.result}"
   location          = var.location
-  kvAccessObjectId  = data.azurerm_client_config.current.object_id 
-  spClientSecret    = module.entraObjects.azure_ad_mgmt_app_secret 
+  kvAccessObjectId  = data.azurerm_client_config.current.object_id
+  spClientSecret    = module.entraObjects.azure_ad_mgmt_app_secret
   subscriptionId    = var.subscriptionId
-  resourceGroupId   = azurerm_resource_group.rg.id 
+  resourceGroupId   = azurerm_resource_group.rg.id
   resourceGroupName = azurerm_resource_group.rg.name
   tags              = local.tags
 }
