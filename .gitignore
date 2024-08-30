@@ -388,7 +388,7 @@ packages-microsoft*
 # docker container build artifacts
 app/enrichment/shared_code
 
-#terraform
+# terraform
 .terraform
 infra/.terraform*
 terraform.tfstate
@@ -397,7 +397,10 @@ terraform.tfstate.d
 infra/infoasst*
 infra/sp_config/config.json
 
-#Upgrade & Migrate Support
+# Upgrade & Migrate Support
 scripts/upgrade_repoint.config.json
 azcopy.tar.gz
 azcopy_dir
+
+# Visual Studios Code
+.vscode
