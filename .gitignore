@@ -404,3 +404,4 @@ azcopy_dir
 
 # Visual Studios Code
 .vscode
+.vscode/*
